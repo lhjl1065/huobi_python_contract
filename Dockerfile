@@ -20,11 +20,10 @@ RUN apt-get update && apt-get -y install cron
 RUN cd /app && python -m examples.statistics_of_funding
 RUN cd /app && python -m examples.send_email2
 
-# 创建一个cron文件来添加任务
+# 创建一个cron文件来添加任
 # 注意切换到examples目录下执行Python脚本，并且send_email2.py比statistics_of_funding.py晚30秒执行
-RUN echo "* * * * * cd /app && python -m examples.statistics_of_funding" > /etc/cron.d/my-cron-job
-RUN echo "* * * * * cd /app && python -m examples.send_email2" >> /etc/cron.d/my-cron-job
-
+RUN echo "28 1 * * * cd /app && /usr/local/bin/python3 -m examples.statistics_of_funding >> /a.log 2>&1" > /etc/cron.d/my-cron-job
+RUN echo "28 1 * * * cd /app && /usr/local/bin/python3 -m examples.send_email2 >> /a.log 2>&1" >> /etc/cron.d/my-cron-job
 
 # 给cron文件设置权限
 RUN chmod 0644 /etc/cron.d/my-cron-job
