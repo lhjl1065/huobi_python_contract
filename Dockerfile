@@ -8,7 +8,8 @@ COPY huobi_python_contract-main.tar /app/
 
 # 解压项目压缩包
 RUN tar -xvf huobi_python_contract-main.tar
-
+# 创建输出文件夹
+RUN mkdir /output
 # 安装Python依赖
 # 假设解压后的目录名为huobi_python_contract-main，且requirements.txt在该目录下
 RUN pip install --no-cache-dir -r requirements.txt
