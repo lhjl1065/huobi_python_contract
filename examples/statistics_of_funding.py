@@ -2,12 +2,14 @@ import asyncio
 import os
 import sys
 import unittest
+import pandas as pd
+from datetime import datetime
+
+from okx import PublicData, Account
 
 from alpha.platforms.huobi_coin_swap.restapi.rest_account_coin_swap import HuobiCoinSwapRestAccountAPI
 from alpha.platforms.huobi_coin_swap.restapi.rest_market_coin_swap import HuobiCoinSwapRestMarketAPI
 from alpha.platforms.huobi_coin_swap.restapi.rest_reference_coin_swap import HuobiCoinSwapRestReferenceAPI
-import pandas as pd
-from datetime import datetime
 
 from binance.cm_futures import CMFutures
 from binance.um_futures import UMFutures
@@ -21,104 +23,85 @@ class TestRestAccountCoinSwap(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.loop = asyncio.get_event_loop()
-        cls.reference_huobi_api = HuobiCoinSwapRestReferenceAPI(config["huobi_host"], config["huobi_access_key"],
-                                                                config["huobi_secret_key"])
-        cls.account_huobi_api = HuobiCoinSwapRestAccountAPI(config["huobi_host"], config["huobi_access_key"],
-                                                            config["huobi_secret_key"])
-        cls.market_huobi_api = HuobiCoinSwapRestMarketAPI(config["huobi_host"], config["huobi_access_key"],
-                                                          config["huobi_secret_key"])
-        cls.binance_coin_api = CMFutures(key=config["binance_access_key"], secret=config["binance_secret_key"])
-        cls.binance_usdt_api = UMFutures(key=config["binance_access_key"], secret=config["binance_secret_key"])
+        cls.huobi_api = {
+            'reference': HuobiCoinSwapRestReferenceAPI(config["huobi_host"], config["huobi_access_key"],
+                                                       config["huobi_secret_key"]),
+            'account': HuobiCoinSwapRestAccountAPI(config["huobi_host"], config["huobi_access_key"],
+                                                   config["huobi_secret_key"]),
+            'market': HuobiCoinSwapRestMarketAPI(config["huobi_host"], config["huobi_access_key"],
+                                                 config["huobi_secret_key"]),
+        }
+        cls.binance_api = {
+            'coin': CMFutures(key=config["binance_access_key"], secret=config["binance_secret_key"]),
+            'usdt': UMFutures(key=config["binance_access_key"], secret=config["binance_secret_key"]),
+        }
+        cls.okx_api = {
+            'public_data': PublicData.PublicAPI(config["okx_access_key"], config["okx_secret_key"], config["okx_passphrase"], flag = "0"),
+            'account': Account.AccountAPI(config["okx_access_key"], config["okx_secret_key"], config["okx_passphrase"], flag = "0"),
+        }
+
 
     @classmethod
     def tearDownClass(cls):
-
-        cls.loop.close()  # 关闭事件循环
+        cls.loop.close()
 
     def test_get_swap_historical_funding_rate(self):
+        self.calculate_funding_rates('Huobi', ['DOGE-USD', 'ADA-USD', 'XRP-USD'])
+        self.calculate_funding_rates('Binance', ['DOGEUSD_PERP', 'ETHUSDT'])
+        self.calculate_funding_rates('Okx', ['DOGE-USD-SWAP'])
 
-        self.statistics_of_funding_fees_huobi('Huobi')
-        self.statistics_of_funding_fees_binance('Binance')
+    def calculate_funding_rates(self, exchange, contracts):
+        for contract in contracts:
+            date_time, rate, condition, record_amount, price = self.get_funding_rate(exchange, contract)
+            self.output_to_excel(exchange, date_time, contract, rate, condition, record_amount, price)
 
-    def statistics_of_funding_fees_huobi(self, exchange):
-        self.statistics_of_funding_fees_huobi_for_contract_code(exchange, "DOGE-USD")
-        self.statistics_of_funding_fees_huobi_for_contract_code(exchange, "ADA-USD")
-        self.statistics_of_funding_fees_huobi_for_contract_code(exchange, "XRP-USD")
+    def get_funding_rate(self, exchange, contract):
+        global time
+        if exchange == 'Huobi':
+            rate_response = self.loop.run_until_complete(
+                self.huobi_api['reference'].get_swap_historical_funding_rate(contract))
+            time = datetime.fromtimestamp(float(rate_response[0]['data']['data'][0]['funding_time']) / 1000)
+            rate = float(rate_response[0]['data']['data'][0]['funding_rate'])
+            rate_show_str = f"{rate * 100:.4f}%"
+            record_response = self.loop.run_until_complete(
+                self.huobi_api['account'].get_swap_financial_record(contract=contract,
+                                                                    type=30 if rate > 0 else 31, direct="prev"))
+            amount = float(record_response[1]['data'][0]['amount'])
+            price_response = self.loop.run_until_complete(
+                self.huobi_api['market'].get_swap_mark_price_kline(contract, '1min', 1))
+            price = float(price_response[0]['data'][0]['close'])
+        elif exchange == 'Binance':
+            api = self.binance_api['coin' if contract.endswith('PERP') else 'usdt']
+            rate_response = api.funding_rate(symbol=contract, limit=1)
+            time = datetime.fromtimestamp(float(rate_response[0]['fundingTime']) / 1000)
+            rate = float(rate_response[0]['fundingRate'])
+            rate_show_str = f"{rate * 100:.4f}%"
+            record_response = api.get_income_history(symbol=contract, limit=1, incomeType="FUNDING_FEE")
+            price_response = api.ticker_price(symbol=contract)
+            price = float(price_response[0]['price']) if contract.endswith('PERP') else float(price_response['price'])
+            amount = float(record_response[0]['income']) if contract.endswith('PERP') else float(record_response[0]['income']) / price
+        elif exchange == 'Okx':
+            rate_response = self.okx_api['public_data'].funding_rate_history(contract, limit=1)
+            time = datetime.fromtimestamp(float(rate_response['data'][0]['fundingTime']) / 1000)
+            rate = float(rate_response['data'][0]['fundingRate'])
+            rate_show_str = f"{rate * 100:.4f}%"
+            record_response = self.okx_api['account'].get_account_bills(instType='SWAP', ccy=contract.split('-')[0], type=8, limit=1,)
+            price = float(record_response['data'][0]['px'])
+            amount = float(record_response['data'][0]['balChg'])
+        condition = self.evaluate_funding_rate(rate)
 
-    def statistics_of_funding_fees_binance(self, exchange):
-        self.statistics_of_funding_fees_binance_for_contract_code(exchange, "DOGEUSD_PERP")
-        self.statistics_of_funding_fees_binance_for_contract_code(exchange, 'ETHUSDT')
+        return time, rate_show_str, condition, amount, price
 
-    def statistics_of_funding_fees_huobi_for_contract_code(self, exchange, contract_code):
-        datetime, huobi_rate, huobi_condition, huobi_record_amount, huobi_price = self.get_funding_rate_huobi(
-            contract_code)
-        self.ouput_excel(exchange, datetime, contract_code, huobi_rate, huobi_condition, huobi_record_amount,
-                         huobi_price)
-
-    def statistics_of_funding_fees_binance_for_contract_code(self, exchange, contract_code):
-        date_time, binance_rate, binance_condition, binance_record_amount, binance_price = self.get_funding_rate_binance(
-            contract_code)
-        self.ouput_excel(exchange, date_time, contract_code, binance_rate, binance_condition, binance_record_amount,
-                         binance_price)
-
-    def get_funding_rate_huobi(self, category):
-        huobi_rate_result = self.loop.run_until_complete(
-            self.reference_huobi_api.get_swap_historical_funding_rate(category))
-        print(huobi_rate_result[0]['data']['data'][0]['funding_rate'])
-        date_time = datetime.fromtimestamp(float(huobi_rate_result[0]['data']['data'][0]['funding_time']) / 1000)
-        huobi_rate = f"{float(huobi_rate_result[0]['data']['data'][0]['funding_rate']) * 100:.4f}%"
-        huobi_condition = self.evaluate_funding_rate(float(huobi_rate_result[0]['data']['data'][0]['funding_rate']))
-
-        huobi_record_result = self.loop.run_until_complete(
-            self.account_huobi_api.get_swap_financial_record(contract=category, type=30 if float(
-                huobi_rate_result[0]['data']['data'][0]['funding_rate']) > 0 else 31, direct="prev"))
-
-        print(huobi_record_result[1]['data'][0]['amount'])
-
-        huobi_price_result = self.loop.run_until_complete(
-            self.market_huobi_api.get_swap_mark_price_kline(category, '1min', 1))
-        print(huobi_price_result[0]['data'][0]['close'])
-        return date_time, huobi_rate, huobi_condition, huobi_record_result[1]['data'][0]['amount'], \
-        huobi_price_result[0]['data'][0]['close']
-
-    def get_funding_rate_binance(self, contract_code):
-        # get server time
-
-        # Get account information
-        if contract_code.endswith('PERP'):
-            binance_rate_result = self.binance_coin_api.funding_rate(symbol=contract_code, limit=1)
-            binance_record = self.binance_coin_api.get_income_history(symbol=contract_code, limit=1,
-                                                                      incomeType="FUNDING_FEE")
-            binance_price_result = self.binance_coin_api.ticker_price(symbol=contract_code)
-            binance_price = binance_price_result[0]['price']
-            binance_amount = float(binance_record[0]['income'])
-        else:
-            binance_rate_result = self.binance_usdt_api.funding_rate(symbol=contract_code, limit=1)
-            binance_record = self.binance_usdt_api.get_income_history(symbol=contract_code, limit=1,
-                                                                      incomeType="FUNDING_FEE")
-            binance_price_result = self.binance_usdt_api.ticker_price(symbol=contract_code)
-            binance_price = binance_price_result['price']
-            binance_amount = float(binance_record[0]['income']) / float(binance_price)
-        print(binance_rate_result[0]['fundingRate'])
-        date_time = datetime.fromtimestamp(float(binance_rate_result[0]['fundingTime']) / 1000)
-        binance_rate = f"{float(binance_rate_result[0]['fundingRate']) * 100:.4f}%"
-        binance_condition = self.evaluate_funding_rate(float(binance_rate_result[0]['fundingRate']))
-
-        print(binance_price)
-        return date_time, binance_rate, binance_condition, binance_amount, binance_price
-
-    def ouput_excel(self, exchange, date_time, contract_code, rate, condition, record_amount, price):
-        # 创建示例数据字典
+    def output_to_excel(self, exchange, date_time, contract, rate, condition, record_amount, price):
         data = {
             '时间': [date_time],
             '交易所': [exchange],
-            '币种': [contract_code],
+            '币种': [contract],
             '资金费率': [rate],
             '资金费': [record_amount],
-            'usdt': [float(price) * float(record_amount)],
+            'usdt': [price * record_amount],
             '备注': [condition]
         }
-
         # 将数据字典转换为DataFrame
         df_new = pd.DataFrame(data)
 
@@ -168,7 +151,7 @@ class TestRestAccountCoinSwap(unittest.TestCase):
         elif rate >= 0.0013:
             return "极高"
         else:
-            return "未知"  # 以防万一输入的数据不符合以上任何条件
+            return "未知"
 
 
 if __name__ == '__main__':
