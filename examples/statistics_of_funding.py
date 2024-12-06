@@ -106,7 +106,7 @@ class TestRestAccountCoinSwap(unittest.TestCase):
         df_new = pd.DataFrame(data)
 
         # 指定Excel文件路径
-        file_path = '资金费记录.xlsx'
+        file_path = '../output/rate_records.xlsx'
 
         # 检查文件是否存在
         if not os.path.exists(file_path):

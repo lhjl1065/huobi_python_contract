@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 def find_closest_time_records():
     # 读取Excel文件
-    df = pd.read_excel('资金费记录.xlsx')
+    df = pd.read_excel('../output/rate_records')
 
     # 确保时间列是datetime类型
     df['时间'] = pd.to_datetime(df['时间'])
