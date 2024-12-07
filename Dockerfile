@@ -18,6 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN apt-get update && apt-get -y install cron
 
 RUN cd /app && python -m examples.statistics_of_funding
+RUN sleep 5
 RUN cd /app && python -m examples.send_email2
 
 # 创建一个cron文件来添加任
