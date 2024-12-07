@@ -3,6 +3,11 @@ FROM python:3.12.8-slim
 # 设置工作目录
 WORKDIR /app
 
+# 设置时区
+ENV TZ=Asia/Shanghai
+RUN apt-get update && apt-get install -y tzdata \
+    && ln -fs /usr/share/zoneinfo/$TZ /etc/localtime \
+    && dpkg-reconfigure --frontend noninteractive tzdata
 # 将项目压缩包复制到容器内
 COPY huobi_python_contract-main.tar /app/
 
