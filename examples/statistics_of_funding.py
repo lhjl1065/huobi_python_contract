@@ -3,6 +3,7 @@ import os
 import sys
 import unittest
 import pandas as pd
+import pytz
 from datetime import datetime
 
 from okx import PublicData, Account
@@ -15,6 +16,7 @@ from binance.cm_futures import CMFutures
 from binance.um_futures import UMFutures
 
 from tests_huobi.config import config
+
 
 sys.path.append('..')
 
@@ -39,6 +41,7 @@ class TestRestAccountCoinSwap(unittest.TestCase):
             'public_data': PublicData.PublicAPI(config["okx_access_key"], config["okx_secret_key"], config["okx_passphrase"], flag = "0"),
             'account': Account.AccountAPI(config["okx_access_key"], config["okx_secret_key"], config["okx_passphrase"], flag = "0"),
         }
+        cls.tz = pytz.timezone('Asia/Shanghai')
 
 
     @classmethod
@@ -60,7 +63,7 @@ class TestRestAccountCoinSwap(unittest.TestCase):
         if exchange == 'Huobi':
             rate_response = self.loop.run_until_complete(
                 self.huobi_api['reference'].get_swap_historical_funding_rate(contract))
-            time = datetime.fromtimestamp(float(rate_response[0]['data']['data'][0]['funding_time']) / 1000)
+            time = datetime.fromtimestamp(float(rate_response[0]['data']['data'][0]['funding_time']) / 1000, self.tz)
             rate = float(rate_response[0]['data']['data'][0]['funding_rate'])
             rate_show_str = f"{rate * 100:.4f}%"
             record_response = self.loop.run_until_complete(
@@ -73,7 +76,7 @@ class TestRestAccountCoinSwap(unittest.TestCase):
         elif exchange == 'Binance':
             api = self.binance_api['coin' if contract.endswith('PERP') else 'usdt']
             rate_response = api.funding_rate(symbol=contract, limit=1)
-            time = datetime.fromtimestamp(float(rate_response[0]['fundingTime']) / 1000)
+            time = datetime.fromtimestamp(float(rate_response[0]['fundingTime']) / 1000, self.tz)
             rate = float(rate_response[0]['fundingRate'])
             rate_show_str = f"{rate * 100:.4f}%"
             record_response = api.get_income_history(symbol=contract, limit=1, incomeType="FUNDING_FEE")
@@ -82,7 +85,7 @@ class TestRestAccountCoinSwap(unittest.TestCase):
             amount = float(record_response[0]['income']) if contract.endswith('PERP') else float(record_response[0]['income']) / price
         elif exchange == 'Okx':
             rate_response = self.okx_api['public_data'].funding_rate_history(contract, limit=1)
-            time = datetime.fromtimestamp(float(rate_response['data'][0]['fundingTime']) / 1000)
+            time = datetime.fromtimestamp(float(rate_response['data'][0]['fundingTime']) / 1000, self.tz)
             rate = float(rate_response['data'][0]['fundingRate'])
             rate_show_str = f"{rate * 100:.4f}%"
             record_response = self.okx_api['account'].get_account_bills(instType='SWAP', ccy=contract.split('-')[0], type=8, limit=1,)
@@ -94,7 +97,7 @@ class TestRestAccountCoinSwap(unittest.TestCase):
 
     def output_to_excel(self, exchange, date_time, contract, rate, condition, record_amount, price):
         data = {
-            '时间': [date_time],
+            '时间': [date_time.replace(tzinfo=None)],
             '交易所': [exchange],
             '币种': [contract],
             '资金费率': [rate],
