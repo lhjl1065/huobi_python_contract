@@ -1,5 +1,5 @@
 FROM python:3.12.8-slim
-
+ARG ADD_HOST
 # 设置工作目录
 WORKDIR /app
 
@@ -21,8 +21,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # 安装cron服务
 RUN apt-get update && apt-get -y install cron
-RUN cd /app && python -m examples.statistics_of_funding
-RUN cd /app && python -m examples.send_email2
+RUN if [ "$ADD_HOST" = "false" ]; then python -m examples.statistics_of_funding; fi
+RUN if [ "$ADD_HOST" = "false" ]; then python -m examples.send_email2; fi
 
 # 创建一个cron文件来添加任
 # 注意切换到examples目录下执行Python脚本，并且send_email2.py比statistics_of_funding.py晚30秒执行
