@@ -5,10 +5,10 @@ fi
 
 # 定义要检查的域名列表
 declare -a urls=(
-    "www.okx.com"
-    "api.hbdm.com"
-    "fapi.binance.com"
-    "dapi.binance.com"
+    "www.okx.com/v2/market-status"
+    "api.hbdm.com/v2/market-status"
+    "fapi.binance.com/fapi/v1/ping"
+    "dapi.binance.com/dapi/v1/ping"
 )
 
 # 检查每个域名是否可访问
