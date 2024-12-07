@@ -9,9 +9,9 @@ ADD_HOST=false
 
 # 解析命令行参数
 while [[ "$#" -gt 0 ]]; do
-    case "\$1" in
+    case "$1" in
         --addhost) ADD_HOST=true ;;
-        *) echo "Unknown parameter passed: \$1"; exit 1 ;;
+        *) echo "Unknown parameter passed: $1"; exit 1 ;;
     esac
     shift
 done
