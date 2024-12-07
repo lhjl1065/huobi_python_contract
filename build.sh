@@ -6,7 +6,7 @@ fi
 # 定义要检查的域名列表
 declare -a urls=(
     "www.okx.com"
-    "api.hbdm.com/v2/market-status"
+    "api.hbdm.com"
     "fapi.binance.com/fapi/v1/ping"
     "dapi.binance.com/dapi/v1/ping"
 )
