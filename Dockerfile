@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # 安装cron服务
 RUN apt-get update && apt-get -y install cron
-RUN echo "8.210.36.204 www.okx.com" >> /etc/hosts && cd /app && python -m examples.statistics_of_funding
+RUN cd /app && python -m examples.statistics_of_funding
 RUN cd /app && python -m examples.send_email2
 
 # 创建一个cron文件来添加任
