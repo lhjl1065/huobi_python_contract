@@ -13,7 +13,7 @@ declare -a urls=(
 
 # 检查每个域名是否可访问
 for url in "${urls[@]}"; do
-    if ! curl --output /dev/null --silent --head --fail "https://$url"; then
+    if ! curl -L --output /dev/null --silent --head --fail "https://$url"; then
         echo "错误：无法访问 $url"
         exit 1
     else
