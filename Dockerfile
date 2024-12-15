@@ -36,4 +36,4 @@ RUN chmod 0644 /etc/cron.d/my-cron-job
 RUN crontab /etc/cron.d/my-cron-job
 
 # 定义容器启动时执行的命令
-CMD cd /app && python3 -m examples.transaction_decision_script && cron -f
+CMD cd /app && python3 -m examples.my_transaction_decision _script && cron -f
