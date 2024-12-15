@@ -4,6 +4,9 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 
+from tests_huobi.config import config
+
+
 def find_closest_time_records():
     # 读取Excel文件
     df = pd.read_excel('../output/rate_records.xlsx')
@@ -32,9 +35,9 @@ def find_closest_time_records():
     return closest_records
 
 def send_email():
-    sender_email = "qq1065270014@163.com"
-    receiver_email = "beethoven022@126.com"
-    password = "CQ3VS38fzDSGnK3M"
+    sender_email = config["sender_email"]
+    receiver_email = config["receiver_email"]
+    password = config["sender_password"]
 
     message = MIMEMultipart("alternative")
     message["Subject"] = "Funding Rate Details"
