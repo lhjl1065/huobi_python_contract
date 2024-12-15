@@ -26,8 +26,8 @@ RUN if [ "$ADD_HOST" = "false" ]; then python -m examples.send_email2; fi
 
 # 创建一个cron文件来添加任
 # 注意切换到examples目录下执行Python脚本，并且send_email2.py比statistics_of_funding.py晚30秒执行
-RUN echo "* * * * * cd /app && /usr/local/bin/python3 -m examples.statistics_of_funding >> /a.log 2>&1" > /etc/cron.d/my-cron-job
-RUN echo "* * * * * cd /app && /usr/local/bin/python3 -m examples.send_email2 >> /a.log 2>&1" >> /etc/cron.d/my-cron-job
+RUN echo "1 0,8,16 * * * cd /app && /usr/local/bin/python3 -m examples.statistics_of_funding >> /a.log 2>&1" > /etc/cron.d/my-cron-job
+RUN echo "2 0,8,16 * * * cd /app && /usr/local/bin/python3 -m examples.send_email2 >> /a.log 2>&1" >> /etc/cron.d/my-cron-job
 
 # 给cron文件设置权限
 RUN chmod 0644 /etc/cron.d/my-cron-job
