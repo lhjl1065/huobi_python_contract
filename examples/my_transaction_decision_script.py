@@ -69,7 +69,7 @@ def main():
                     )
                     send_email(subject, message, "receiver_email@example.com")
 
-        time.sleep(60)
+        time.sleep(10800)
 
 
 if __name__ == "__main__":
