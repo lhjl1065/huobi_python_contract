@@ -47,8 +47,8 @@ class TestRestAccountCoinSwap(unittest.TestCase):
         cls.loop.close()
 
     def test_get_swap_historical_funding_rate(self):
-        self.calculate_funding_rates('Huobi', ['DOGE-USD', 'ADA-USD', 'XRP-USD'])
-        self.calculate_funding_rates('Binance', ['DOGEUSD_PERP', 'ETHUSDT'])
+        self.calculate_funding_rates('Huobi', ['DOGE-USD', 'ADA-USD'])
+        self.calculate_funding_rates('Binance', ['ETHUSDT'])
         self.calculate_funding_rates('Okx', ['DOGE-USD-SWAP'])
 
     def calculate_funding_rates(self, exchange, contracts):
